@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Relations & Clinical Risk Handoff</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Lighter gray for background */
+        }
+        /* Enhanced card styling */
+        .choice-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .choice-card:has(input:checked) {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+        }
+        
+        .choice-card:has(input:checked) h3 {
+            color: #2563eb;
+        }
+        
+        .choice-card:hover:not(:has(input:checked)) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Improved tooltip styling */
+        .info-tooltip {
+            display: none;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            width: 320px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: left;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .info-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+        
+        .info-icon-wrapper:hover .info-tooltip {
+            display: block;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        /* Form validation styling */
+        .field-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px #ef4444 !important;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        /* Loading state */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Success message */
+        .success-banner {
+            background-color: #dcfce7;
+            border-color: #16a34a;
+            color: #166534;
+        }
+        
+        /* Character counter */
+        .char-counter {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+        
+        .char-counter.warning {
+            color: #f59e0b;
+        }
+        
+        .char-counter.error {
+            color: #ef4444;
+        }
+
+        /* Shake animation for validation */
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .shake {
+          animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Success Banner -->
+    <div id="successBanner" class="hidden fixed top-0 left-0 right-0 z-50 p-4 border-b-2 success-banner">
+        <div class="max-w-4xl mx-auto flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <span id="successMessage">Handoff successfully downloaded!</span>
+            <button onclick="document.getElementById('successBanner').classList.add('hidden')" class="ml-auto text-green-800 hover:text-green-900">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        <header class="text-center mb-10 bg-gradient-to-r from-blue-50 to-indigo-50 py-12 px-6 rounded-2xl shadow-sm">
+             <div class="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-md mb-6 border-4 border-blue-100">
+                <svg class="w-10 h-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                </svg>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-3">Patient Relations Hand-off Tool</h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">A streamlined tool for documenting patient concerns and escalating grievances when necessary.</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+            
+            <!-- Clinical Risk Section -->
+            <div class="mb-8 p-4 bg-gray-100 rounded-lg">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-700">
+                            <strong>Need to involve Clinical Risk?</strong> Contact the on-call consultant at <a href="tel:734-763-5456" class="font-medium underline hover:text-gray-900">734-763-5456</a> or page #1490 via the <a href="https://paging.med.umich.edu/pagingMobile/homeDeskTop" target="_blank" rel="noopener noreferrer" class="font-medium underline hover:text-gray-900">paging site</a>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="handoffForm" class="border-t-2 border-gray-200 pt-8">
+                <!-- Patient Relations Section -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Patient Relations Handoff</h2>
+                    <p class="text-gray-700 mb-6">For non-urgent situations that don't meet Clinical Risk criteria, document the issue for Patient Relations follow-up.</p>
+                    
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Step 1: Select Handoff Type *</h3>
+                    <div id="handoff-type-error" class="hidden text-red-600 font-medium mb-4 -mt-2">Please select a handoff type to continue.</div>
+
+                    <div class="space-y-6" id="handoff-type-selection">
+                        <!-- FYI Only Card -->
+                        <label class="choice-card flex items-start p-6 border-2 border-gray-200 rounded-xl cursor-pointer">
+                            <input type="radio" name="action_required" value="FYI Only - Resolved" class="hidden" required>
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="font-bold text-xl text-gray-800">FYI Only - Resolved</h3>
+                                    <div class="relative info-icon-wrapper ml-3">
+                                        <svg class="w-6 h-6 text-gray-400 hover:text-gray-600 cursor-help" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                        </svg>
+                                        <div class="info-tooltip">
+                                            <strong>Policy Definition (Complaint):</strong> An expression of dissatisfaction regarding care or services that is resolved in a timely manner by staff present.
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-gray-700 leading-relaxed">Issue was addressed at the bedside, patient is satisfied with the resolution, and any remaining follow-up can be managed by unit leadership. Used for documentation and trend analysis.</p>
+                            </div>
+                        </label>
+                        
+                        <!-- Follow-up Required Card -->
+                        <label class="choice-card flex items-start p-6 border-2 border-gray-200 rounded-xl cursor-pointer">
+                            <input type="radio" name="action_required" value="Follow-up Required - Grievance" class="hidden">
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="font-bold text-xl text-gray-800">Follow-up Required - Grievance</h3>
+                                    <div class="relative info-icon-wrapper ml-3">
+                                        <svg class="w-6 h-6 text-gray-400 hover:text-gray-600 cursor-help" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                        </svg>
+                                        <div class="info-tooltip">
+                                            <strong>Policy Definition (Grievance):</strong> A written or verbal complaint that is not resolved at the time by staff present, or involves abuse, neglect, or patient harm.
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-gray-700 leading-relaxed">Issue requires investigation, involves multiple departments, cannot be resolved during House Manager coverage, or patient explicitly requests formal grievance process.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Details Section -->
+                <div class="border-t border-gray-200 pt-8">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Step 2: Handoff Documentation</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Left Column -->
+                        <div class="space-y-6">
+                            <div>
+                                <label for="patient_name" class="block text-sm font-semibold text-gray-800 mb-2">Patient Name *</label>
+                                <input type="text" name="patient_name" id="patient_name" 
+                                       class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200" 
+                                       placeholder="Enter patient's full name" required>
+                                <div class="error-message hidden" id="patient_name_error">Patient name is required</div>
+                            </div>
+                            
+                             <div>
+                                <label for="mrn" class="block text-sm font-semibold text-gray-800 mb-2">MRN *</label>
+                                <input type="text" name="mrn" id="mrn" 
+                                       class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200" 
+                                       placeholder="Enter patient's MRN" required>
+                                <div class="error-message hidden" id="mrn_error">MRN is required</div>
+                            </div>
+                            
+                            <div>
+                                <label for="patient_unit" class="block text-sm font-semibold text-gray-800 mb-2">Unit / Room Number *</label>
+                                <input type="text" name="patient_unit" id="patient_unit" 
+                                       class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200" 
+                                       placeholder="e.g., 5C-204, ED Bay 3" required>
+                                <div class="error-message hidden" id="patient_unit_error">Unit/room information is required</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column -->
+                        <div class="space-y-6">
+                            <div>
+                                <label for="summary" class="block text-sm font-semibold text-gray-800 mb-2">Issue Summary *</label>
+                                <textarea id="summary" name="summary" rows="4" maxlength="1000"
+                                          class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200" 
+                                          placeholder="Describe the patient's concern or complaint clearly and objectively..." required></textarea>
+                                <div class="flex justify-between">
+                                    <div class="error-message hidden" id="summary_error">Issue summary is required</div>
+                                    <div class="char-counter" id="summary_counter">0/1000</div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="action_taken" class="block text-sm font-semibold text-gray-800 mb-2">Actions Already Taken *</label>
+                                <textarea id="action_taken" name="action_taken" rows="4" maxlength="1000"
+                                          class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200" 
+                                          placeholder="Detail what steps you've already taken to address the issue..." required></textarea>
+                                <div class="flex justify-between">
+                                    <div class="error-message hidden" id="action_taken_error">Action taken description is required</div>
+                                    <div class="char-counter" id="action_taken_counter">0/1000</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="mt-6">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2">
+                            <input type="checkbox" name="leadership_notified" id="leadership_notified" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-gray-700 font-medium">Unit leadership has been made aware of this issue.</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submission -->
+                <div class="mt-10 border-t border-gray-200 pt-8">
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button type="button" id="copyButton" 
+                                class="flex-1 flex justify-center items-center py-3 px-6 border border-gray-300 rounded-lg text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:bg-gray-200 disabled:cursor-not-allowed">
+                            <svg class="w-5 h-5 mr-2" id="copyButtonIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            <span id="copyButtonText">Copy for Manual Email</span>
+                        </button>
+                        <button type="button" id="downloadButton" 
+                                class="flex-1 flex justify-center items-center py-3 px-6 border border-transparent rounded-lg text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <span id="downloadButtonText">Download Handoff Email (.eml)</span>
+                            <div class="spinner hidden ml-2" id="downloadSpinner"></div>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-3 text-center">All required fields must be completed before downloading or copying.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Configuration
+            const config = {
+                recipientEmail: 'Patient_Relations_and_Clinical_Risk_Team@med.umich.edu',
+                maxCharLength: 1000
+            };
+
+            // DOM elements
+            const elements = {
+                form: document.getElementById('handoffForm'),
+                downloadButton: document.getElementById('downloadButton'),
+                copyButton: document.getElementById('copyButton'),
+                copyButtonText: document.getElementById('copyButtonText'),
+                copyButtonIcon: document.getElementById('copyButtonIcon'),
+                downloadButtonText: document.getElementById('downloadButtonText'),
+                downloadSpinner: document.getElementById('downloadSpinner'),
+                successBanner: document.getElementById('successBanner'),
+                successMessage: document.getElementById('successMessage'),
+            };
+
+            // Form validation
+            class FormValidator {
+                constructor() {
+                    this.requiredFields = ['patient_name', 'mrn', 'patient_unit', 'summary', 'action_taken'];
+                    this.radioRequired = 'action_required';
+                    this.attachListeners();
+                }
+
+                attachListeners() {
+                    elements.form.addEventListener('input', () => this.validateForm());
+                    elements.form.addEventListener('change', () => this.validateForm());
+                }
+
+                validateField(fieldName, value) {
+                    const field = document.getElementById(fieldName);
+                    const errorElement = document.getElementById(`${fieldName}_error`);
+                    
+                    if (!value || !value.trim()) {
+                        field.classList.add('field-error');
+                        if (errorElement) errorElement.classList.remove('hidden');
+                        return false;
+                    } else {
+                        field.classList.remove('field-error');
+                        if (errorElement) errorElement.classList.add('hidden');
+                        return true;
+                    }
+                }
+
+                validateRadio() {
+                    const radioSelected = elements.form.querySelector(`input[name="${this.radioRequired}"]:checked`);
+                    const selectionContainer = document.getElementById('handoff-type-selection');
+                    const errorElement = document.getElementById('handoff-type-error');
+
+                    if (!radioSelected) {
+                        if (errorElement) errorElement.classList.remove('hidden');
+                        if (selectionContainer) selectionContainer.classList.add('shake');
+                        setTimeout(() => {
+                           if (selectionContainer) selectionContainer.classList.remove('shake');
+                        }, 820);
+                        return false;
+                    } else {
+                        if (errorElement) errorElement.classList.add('hidden');
+                        return true;
+                    }
+                }
+
+                validateForm(isButtonPress = false) {
+                    let isValid = true;
+                    const formData = new FormData(elements.form);
+                    this.requiredFields.forEach(fieldName => {
+                        if (!this.validateField(fieldName, formData.get(fieldName))) {
+                            isValid = false;
+                        }
+                    });
+                    
+                    if (isButtonPress) {
+                        if (!this.validateRadio()) {
+                           isValid = false;
+                        }
+                    } else {
+                        if (!elements.form.querySelector(`input[name="${this.radioRequired}"]:checked`)) {
+                           isValid = false;
+                        }
+                    }
+
+                    elements.downloadButton.disabled = !isValid;
+                    elements.copyButton.disabled = !isValid;
+                    return isValid;
+                }
+            }
+
+            // Character counter
+            class CharacterCounter {
+                constructor() {
+                    this.setupCounters();
+                }
+                setupCounters() {
+                    ['summary', 'action_taken'].forEach(fieldName => {
+                        const field = document.getElementById(fieldName);
+                        const counter = document.getElementById(`${fieldName}_counter`);
+                        if (field && counter) {
+                            field.addEventListener('input', () => this.updateCounter(field, counter));
+                            this.updateCounter(field, counter); // Initial update
+                        }
+                    });
+                }
+                updateCounter(field, counter) {
+                    const length = field.value.length;
+                    const maxLength = parseInt(field.getAttribute('maxlength'), 10) || config.maxCharLength;
+                    counter.textContent = `${length}/${maxLength}`;
+                    counter.classList.remove('warning', 'error');
+                    if (length > maxLength * 0.9) counter.classList.add('warning');
+                    if (length >= maxLength) counter.classList.add('error');
+                }
+            }
+
+            // Email generation
+            class EmailGenerator {
+                
+                getEmailData() {
+                    const formData = new FormData(elements.form);
+                    const data = {
+                        actionRequired: formData.get('action_required') || '[Not Selected]',
+                        patientName: formData.get('patient_name') || '[Not Entered]',
+                        patientUnit: formData.get('patient_unit') || '[Not Entered]',
+                        mrn: formData.get('mrn') || '[Not Entered]',
+                        summary: formData.get('summary') || '[Not Entered]',
+                        actionTaken: formData.get('action_taken') || '[Not Entered]',
+                        leadershipNotified: formData.get('leadership_notified') ? 'Yes' : 'No'
+                    };
+                    
+                    const subject = `PR Handoff: ${data.actionRequired} - ${data.patientName} (${data.patientUnit})`;
+                    return { ...data, subject, body: this.getPlainTextBody(data), htmlBody: this.getHtmlBody(data) };
+                }
+
+                getPlainTextBody(data) {
+                    return `A new handoff has been submitted from the Patient Handoff Tool.
+
+Action Required:
+${data.actionRequired}
+
+---------------------------------
+DETAILS
+---------------------------------
+- Patient Name: ${data.patientName}
+- MRN: ${data.mrn}
+- Patient Unit/Room: ${data.patientUnit}
+- Unit Leadership Notified: ${data.leadershipNotified}
+
+Summary of Issue:
+${data.summary}
+
+Actions Already Taken:
+${data.actionTaken}
+`;
+                }
+
+                getHtmlBody(data) {
+                    return `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <style>
+                                body { font-family: Arial, sans-serif; color: #333; }
+                                .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+                                .header { background-color: #f4f4f4; padding: 10px; text-align: center; border-bottom: 1px solid #ddd; }
+                                .section { margin-bottom: 20px; }
+                                .section h2 { font-size: 18px; color: #005A9C; border-bottom: 2px solid #005A9C; padding-bottom: 5px; margin-bottom: 10px; }
+                                .details-table { width: 100%; border-collapse: collapse; }
+                                .details-table td { padding: 8px; border: 1px solid #eee; }
+                                .details-table .label { font-weight: bold; width: 150px; background-color: #f9f9f9; }
+                                .action-required { background-color: #FFFBEB; border-left: 4px solid #FBBF24; padding: 15px; margin-bottom: 20px; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <div class="header">
+                                    <h1>Patient Relations Handoff</h1>
+                                </div>
+                                <div class="section">
+                                    <div class="action-required">
+                                        <strong>Action Required:</strong> ${data.actionRequired}
+                                    </div>
+                                    <h2>Details</h2>
+                                    <table class="details-table">
+                                        <tr><td class="label">Patient Name</td><td>${data.patientName}</td></tr>
+                                        <tr><td class="label">MRN</td><td>${data.mrn}</td></tr>
+                                        <tr><td class="label">Unit / Room</td><td>${data.patientUnit}</td></tr>
+                                        <tr><td class="label">Leadership Notified</td><td>${data.leadershipNotified}</td></tr>
+                                    </table>
+                                </div>
+                                <div class="section">
+                                    <h2>Summary of Issue</h2>
+                                    <p>${data.summary.replace(/\n/g, '<br>')}</p>
+                                </div>
+                                <div class="section">
+                                    <h2>Actions Already Taken</h2>
+                                    <p>${data.actionTaken.replace(/\n/g, '<br>')}</p>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                }
+
+                download() {
+                    const { body, htmlBody, subject, patientName } = this.getEmailData();
+                    const boundary = "----_Part_12345_67890";
+
+                    const emlContent = `From: "Patient Handoff Tool" <donotreply@med.umich.edu>\n` +
+                                       `To: <${config.recipientEmail}>\n` +
+                                       `Subject: ${subject}\n` +
+                                       `MIME-Version: 1.0\n` +
+                                       `Content-Type: multipart/alternative; boundary="${boundary}"\n\n` +
+                                       `--${boundary}\n` +
+                                       `Content-Type: text/plain; charset=utf-8\n\n` +
+                                       `${body}\n\n` +
+                                       `--${boundary}\n` +
+                                       `Content-Type: text/html; charset=utf-8\n\n` +
+                                       `${htmlBody}\n\n` +
+                                       `--${boundary}--`;
+
+                    const blob = new Blob([emlContent], { type: 'message/rfc822' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    const safeFileName = patientName.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'handoff';
+                    link.download = `PR_Handoff_${safeFileName}.eml`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+
+            // Main App Controller
+            class App {
+                constructor() {
+                    this.validator = new FormValidator();
+                    this.charCounter = new CharacterCounter();
+                    this.emailGenerator = new EmailGenerator();
+                    this.setupEventListeners();
+                    this.validator.validateForm(); // Initial check
+                }
+
+                setupEventListeners() {
+                    elements.downloadButton.addEventListener('click', () => this.handleDownload());
+                    elements.copyButton.addEventListener('click', () => this.handleCopy());
+                }
+
+                handleDownload() {
+                    if (!this.validator.validateForm(true)) return;
+                    
+                    elements.downloadButton.classList.add('loading');
+                    elements.downloadButtonText.classList.add('hidden');
+                    elements.downloadSpinner.classList.remove('hidden');
+
+                    setTimeout(() => {
+                        this.emailGenerator.download();
+                        elements.downloadButton.classList.remove('loading');
+                        elements.downloadButtonText.classList.remove('hidden');
+                        elements.downloadSpinner.classList.add('hidden');
+                        this.showSuccessBanner("Handoff file downloaded! Please open it and click 'Send' in your email app.");
+                    }, 500);
+                }
+
+                handleCopy() {
+                    if (!this.validator.validateForm(true)) return;
+                    const { body } = this.emailGenerator.getEmailData();
+                    
+                    const textarea = document.createElement('textarea');
+                    textarea.value = body;
+                    textarea.style.position = 'fixed'; 
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    
+                    try {
+                        document.execCommand('copy');
+                        const originalText = elements.copyButtonText.textContent;
+                        elements.copyButton.classList.add('bg-green-100', 'border-green-300', 'text-green-700');
+                        elements.copyButtonText.textContent = 'Copied Successfully!';
+                        setTimeout(() => {
+                           elements.copyButtonText.textContent = originalText;
+                           elements.copyButton.classList.remove('bg-green-100', 'border-green-300', 'text-green-700');
+                        }, 2000);
+
+                    } catch (err) {
+                        console.error('Fallback: Oops, unable to copy', err);
+                    }
+
+                    document.body.removeChild(textarea);
+                }
+
+                showSuccessBanner(message) {
+                    elements.successMessage.textContent = message;
+                    elements.successBanner.classList.remove('hidden');
+                    setTimeout(() => {
+                        elements.successBanner.classList.add('hidden');
+                    }, 5000);
+                }
+            }
+
+            // Initialize the app
+            new App();
+        });
+    </script>
+</body>
+</html>
